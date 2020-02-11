@@ -28,17 +28,16 @@ steps:
         -d '{"state": "Registered", "properties": {"tenantId": "'"$AZURE_TENANT_ID"'"}}' \
         "https://localhost:8443/subscriptions/$AZURE_SUBSCRIPTION_ID?api-version=2.0"
 
-      echo "########## Create ARO RG ##########"
       RESOURCEGROUP="v4-e2e-rg-$(git log --format=%h -n 1 HEAD)-$LOCATION"
       CLUSTER=v4-e2e-$(git log --format=%h -n 1 HEAD)
-
-      az group create -g "$RESOURCEGROUP" -l $LOCATION
+      echo "########## Create ARO RG : $RESOURCEGROUP ##########"
+      az group create -g "$RESOURCEGROUP" -l $LOCATION >/dev/null
 
       echo "########## Create ARO Vnet ##########"
       az network vnet create \
         -g "$RESOURCEGROUP" \
         -n dev-vnet \
-        --address-prefixes 10.0.0.0/9
+        --address-prefixes 10.0.0.0/9 >/dev/null
 
       echo "########## Create ARO Subnet ##########"
       for subnet in "$CLUSTER-master" "$CLUSTER-worker"; do
@@ -47,7 +46,7 @@ steps:
           --vnet-name dev-vnet \
           -n "$subnet" \
           --address-prefixes 10.$((RANDOM & 127)).$((RANDOM & 255)).0/24 \
-          --service-endpoints Microsoft.ContainerRegistry
+          --service-endpoints Microsoft.ContainerRegistry >/dev/null
       done
 
       echo "########## Update ARO Subnet ##########"
@@ -55,17 +54,17 @@ steps:
         -g "$RESOURCEGROUP" \
         --vnet-name dev-vnet \
         -n "$CLUSTER-master" \
-        --disable-private-link-service-network-policies true
+        --disable-private-link-service-network-policies true >/dev/null
 
-      echo "########## Create ARO Cluster ##########"
+      echo "########## Create ARO Cluster $CLUSTER ##########"
       az aro create \
         -g "$RESOURCEGROUP" \
         -n "$CLUSTER" \
         --vnet dev-vnet \
         --master-subnet "$CLUSTER-master" \
         --worker-subnet "$CLUSTER-worker" \
-        --client-id $(cat aro-v4-e2e-devops-spn.json | jq -r '.clientId') \
-        --client-secret $(cat aro-v4-e2e-devops-spn.json | jq -r '.clientSecret')
+        --client-id $(cat devops-spn.json | jq -r '.clientId') \
+        --client-secret $(cat devops-spn.json | jq -r '.clientSecret')
 
       echo "########## CLI : ARO List ##########"
       az aro list -o table

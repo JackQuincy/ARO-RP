@@ -9,13 +9,13 @@ steps:
       . secrets/env
 
       echo "########## Creating RG $RESOURCEGROUP in $LOCATION ##########"
-      az group create -g "$RESOURCEGROUP" -l "$LOCATION"
+      az group create -g "$RESOURCEGROUP" -l "$LOCATION" >/dev/null
 
       echo "########## Deploying rp-development-nsg in RG $RESOURCEGROUP ##########"
       az group deployment create \
         -g "$RESOURCEGROUP" \
         -n rp-development-nsg \
-        --template-file deploy/rp-development-nsg.json
+        --template-file deploy/rp-development-nsg.json >/dev/null
 
       ARM_TEMPLATE_STATE=$(az group deployment show -n rp-development-nsg -g $RESOURCEGROUP --query properties.provisioningState -o tsv)
       if [[ $ARM_TEMPLATE_STATE == "Failed" ]]; then
@@ -40,7 +40,7 @@ steps:
           "domainName=$DOMAIN_NAME.$PARENT_DOMAIN_NAME" \
           "fpServicePrincipalId=${{ parameters.azureFpClientSPNId }}" \
           "keyvaultPrefix=$KEYVAULT_PREFIX" \
-          "rpServicePrincipalId=${{ parameters.azureArmClientSPNId }}"
+          "rpServicePrincipalId=${{ parameters.azureArmClientSPNId }}" >/dev/null
 
       ARM_TEMPLATE_STATE=$(az group deployment show -n rp-development -g $RESOURCEGROUP --query properties.provisioningState -o tsv)
       if [[ $ARM_TEMPLATE_STATE == "Failed" ]]; then
@@ -61,7 +61,7 @@ steps:
           "proxyImageAuth=$(jq -r '.auths["arosvc.azurecr.io"].auth' <<<$PULL_SECRET)" \
           "proxyKey=$(base64 -w0 <secrets/proxy.key)" \
           "sshPublicKey=$(<secrets/proxy_id_rsa.pub)" \
-          "vpnCACertificate=$(base64 -w0 <secrets/vpn-ca.crt)"
+          "vpnCACertificate=$(base64 -w0 <secrets/vpn-ca.crt)" >/dev/null
 
       ARM_TEMPLATE_STATE=$(az group deployment show -n env-development -g $RESOURCEGROUP --query properties.provisioningState -o tsv)
       if [[ $ARM_TEMPLATE_STATE == "Failed" ]]; then
@@ -73,21 +73,21 @@ steps:
       az keyvault certificate import \
         --vault-name "$KEYVAULT_PREFIX-service" \
         --name rp-firstparty \
-        --file secrets/firstparty-development.pem
+        --file secrets/firstparty-development.pem >/dev/null
       az keyvault certificate import \
         --vault-name "$KEYVAULT_PREFIX-service" \
         --name rp-server \
-        --file secrets/localhost.pem
+        --file secrets/localhost.pem >/dev/null
       az keyvault secret set \
         --vault-name "$KEYVAULT_PREFIX-service" \
         --name encryption-key \
-        --value "$(openssl rand -base64 32)"
+        --value "$(openssl rand -base64 32)" >/dev/null
 
       echo "########## Creating NS record to DNS Zone $DOMAIN_NAME in $PARENT_DOMAIN_NAME | RG $PARENT_DOMAIN_RESOURCEGROUP ##########"
       az network dns record-set ns create \
         --resource-group "$PARENT_DOMAIN_RESOURCEGROUP" \
         --zone "$PARENT_DOMAIN_NAME" \
-        --name "$DOMAIN_NAME"
+        --name "$DOMAIN_NAME" >/dev/null
 
       for ns in $(az network dns zone show \
         --resource-group "$RESOURCEGROUP" \
@@ -97,7 +97,7 @@ steps:
           --resource-group "$PARENT_DOMAIN_RESOURCEGROUP" \
           --zone "$PARENT_DOMAIN_NAME" \
           --record-set-name "$DOMAIN_NAME" \
-          --nsdname "$ns"
+          --nsdname "$ns" >/dev/null
       done
 
       echo "########## VPN Configuration ##########"

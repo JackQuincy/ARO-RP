@@ -6,6 +6,8 @@ steps:
 
       . secrets/env
 
+      echo "📦 Creating new DB $DATABASE_NAME"
+
       az group deployment create \
         -g "$RESOURCEGROUP" \
         -n "databases-development-test" \
@@ -13,4 +15,5 @@ steps:
         --parameters \
           "databaseAccountName=$COSMOSDB_ACCOUNT" \
           "databaseName=$DATABASE_NAME" \
+          >/dev/null
     displayName: "🚀 Deploy custom RP DB"
