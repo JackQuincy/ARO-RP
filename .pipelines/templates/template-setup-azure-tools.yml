@@ -1,0 +1,16 @@
+parameters:
+  workingDirectory: ""
+steps:
+  - script: |
+      cd ${{ parameters.workingDirectory }}
+      curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      make az
+      mkdir ~/.azure
+      touch ~/.azure/config
+      ls -la ~/.azure
+      cat >> ~/.azure/config <<EOF
+      [extension]
+      dev_sources = $PWD/python
+      EOF
+      az -v
+    displayName: "⚙️ Set up Azure CLI"

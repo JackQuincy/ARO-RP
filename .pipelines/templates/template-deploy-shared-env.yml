@@ -1,0 +1,114 @@
+parameters:
+  azureFpClientSPNId: ""
+  azureArmClientSPNId: ""
+  workingDirectory: ""
+steps:
+  - script: |
+      cd ${{ parameters.workingDirectory }}
+
+      . secrets/env
+
+      echo "########## Creating RG $RESOURCEGROUP in $LOCATION ##########"
+      az group create -g "$RESOURCEGROUP" -l "$LOCATION"
+
+      echo "########## Deploying rp-development-nsg in RG $RESOURCEGROUP ##########"
+      az group deployment create \
+        -g "$RESOURCEGROUP" \
+        -n rp-development-nsg \
+        --template-file deploy/rp-development-nsg.json
+
+      ARM_TEMPLATE_STATE=$(az group deployment show -n rp-development-nsg -g $RESOURCEGROUP --query properties.provisioningState -o tsv)
+      if [[ $ARM_TEMPLATE_STATE == "Failed" ]]; then
+        echo "##[error] Error deploying rp-development-nsg $(az group deployment show -n rp-development-nsg -g $RESOURCEGROUP --query properties.error.details -o tsv)"
+        exit 1
+      fi
+
+      echo "########## Deploying rp-development in RG $RESOURCEGROUP ##########"
+      echo "### adminObjectId         = $ADMIN_OBJECT_ID
+      echo "### databaseAccountName   = $COSMOSDB_ACCOUNT
+      echo "### domainName            = $DOMAIN_NAME.$PARENT_DOMAIN_NAME
+      echo "### fpServicePrincipalId  = ${{ parameters.azureFpClientSPNId }}
+      echo "### keyvaultPrefix        = $KEYVAULT_PREFIX
+      echo "### rpServicePrincipalId  = ${{ parameters.azureArmClientSPNId }}
+      az group deployment create \
+        -g "$RESOURCEGROUP" \
+        -n rp-development \
+        --template-file deploy/rp-development.json \
+        --parameters \
+          "adminObjectId=$ADMIN_OBJECT_ID" \
+          "databaseAccountName=$COSMOSDB_ACCOUNT" \
+          "domainName=$DOMAIN_NAME.$PARENT_DOMAIN_NAME" \
+          "fpServicePrincipalId=${{ parameters.azureFpClientSPNId }}" \
+          "keyvaultPrefix=$KEYVAULT_PREFIX" \
+          "rpServicePrincipalId=${{ parameters.azureArmClientSPNId }}"
+
+      ARM_TEMPLATE_STATE=$(az group deployment show -n rp-development -g $RESOURCEGROUP --query properties.provisioningState -o tsv)
+      if [[ $ARM_TEMPLATE_STATE == "Failed" ]]; then
+        echo "##[error] Error deploying env-development $(az group deployment show -n rp-development -g $RESOURCEGROUP --query properties.error.details -o tsv)"
+        exit 1
+      fi
+
+      echo "########## Deploying env-development in RG $RESOURCEGROUP ##########"
+      az group deployment create \
+        -g "$RESOURCEGROUP" \
+        -n env-development \
+        --template-file deploy/env-development.json \
+        --parameters \
+          "proxyCert=$(base64 -w0 <secrets/proxy.crt)" \
+          "proxyClientCert=$(base64 -w0 <secrets/proxy-client.crt)" \
+          "proxyDomainNameLabel=$(cut -d. -f2 <<<$PROXY_HOSTNAME)" \
+          "proxyImage=arosvc.azurecr.io/proxy:latest" \
+          "proxyImageAuth=$(jq -r '.auths["arosvc.azurecr.io"].auth' <<<$PULL_SECRET)" \
+          "proxyKey=$(base64 -w0 <secrets/proxy.key)" \
+          "sshPublicKey=$(<secrets/proxy_id_rsa.pub)" \
+          "vpnCACertificate=$(base64 -w0 <secrets/vpn-ca.crt)"
+
+      ARM_TEMPLATE_STATE=$(az group deployment show -n env-development -g $RESOURCEGROUP --query properties.provisioningState -o tsv)
+      if [[ $ARM_TEMPLATE_STATE == "Failed" ]]; then
+        echo "##[error] Error deploying env-development $(az group deployment show -n env-development -g $RESOURCEGROUP --query properties.error.details -o tsv)"
+        exit 1
+      fi
+
+      echo "########## Import certificates to $KEYVAULT_PREFIX-service ##########"
+      az keyvault certificate import \
+        --vault-name "$KEYVAULT_PREFIX-service" \
+        --name rp-firstparty \
+        --file secrets/firstparty-development.pem
+      az keyvault certificate import \
+        --vault-name "$KEYVAULT_PREFIX-service" \
+        --name rp-server \
+        --file secrets/localhost.pem
+      az keyvault secret set \
+        --vault-name "$KEYVAULT_PREFIX-service" \
+        --name encryption-key \
+        --value "$(openssl rand -base64 32)"
+
+      echo "########## Creating NS record to DNS Zone $DOMAIN_NAME in $PARENT_DOMAIN_NAME | RG $PARENT_DOMAIN_RESOURCEGROUP ##########"
+      az network dns record-set ns create \
+        --resource-group "$PARENT_DOMAIN_RESOURCEGROUP" \
+        --zone "$PARENT_DOMAIN_NAME" \
+        --name "$DOMAIN_NAME"
+
+      for ns in $(az network dns zone show \
+        --resource-group "$RESOURCEGROUP" \
+        --name "$DOMAIN_NAME.$PARENT_DOMAIN_NAME" \
+        --query nameServers -o tsv); do
+        az network dns record-set ns add-record \
+          --resource-group "$PARENT_DOMAIN_RESOURCEGROUP" \
+          --zone "$PARENT_DOMAIN_NAME" \
+          --record-set-name "$DOMAIN_NAME" \
+          --nsdname "$ns"
+      done
+
+      echo "########## VPN Configuration ##########"
+      curl -so vpnclientconfiguration.zip "$(az network vnet-gateway vpn-client generate \
+        -g "$RESOURCEGROUP" \
+        -n dev-vpn \
+        -o tsv)"
+      export CLIENTCERTIFICATE="$(openssl x509 -inform der -in secrets/vpn-client.crt)"
+      export PRIVATEKEY="$(openssl rsa -inform der -in secrets/vpn-client.key)"
+      unzip -qc vpnclientconfiguration.zip 'OpenVPN\\vpnconfig.ovpn' \
+        | envsubst \
+        | grep -v '^log ' >"secrets/vpn-$LOCATION.ovpn"
+      rm vpnclientconfiguration.zip
+    displayName: "🚀 Deploy shared env"

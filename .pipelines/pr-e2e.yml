@@ -1,0 +1,83 @@
+# Azure DevOps Pipeline running e2e tests
+trigger: none
+pr: none
+
+variables:
+  - template: vars.yml
+jobs:
+  - job: "e2e"
+    pool:
+      vmImage: "ubuntu-latest"
+    steps:
+      - template: ./templates/template-setup-golang-env.yml
+        parameters:
+          gobin: ${{ variables.GOBIN }}
+          gopath: ${{ variables.GOPATH }}
+          goroot: ${{ variables.GOROOT }}
+          modulePath: ${{ variables.modulePath }}
+      - template: ./templates/template-setup-azure-tools.yml
+        parameters:
+          workingDirectory: ${{ variables.modulePath }}
+      - script: |
+          echo $(aro-v4-e2e-devops-spn) | base64 -d > aro-v4-e2e-devops-spn.json
+          az login -u $(cat aro-v4-e2e-devops-spn.json | jq -r '.clientId') -p $(cat aro-v4-e2e-devops-spn.json | jq -r '.clientSecret') --tenant $(cat aro-v4-e2e-devops-spn.json | jq -r '.tenantId') --service-principal
+          mkdir -p secrets
+        workingDirectory: "${{ variables.modulePath }}"
+        displayName: "🗝 AZ Login"
+      - template: ./templates/template-pull-certs-from-kv.yml
+        parameters:
+          kvName: "aro-e2e-global"
+          certName: "proxy-e2e"
+          outputPath: ${{ variables.modulePath }}/secrets/proxy
+      - template: ./templates/template-pull-certs-from-kv.yml
+        parameters:
+          kvName: "aro-e2e-global"
+          certName: "proxy-e2e-client"
+          outputPath: ${{ variables.modulePath }}/secrets/proxy-client
+      - template: ./templates/template-pull-certs-from-kv.yml
+        parameters:
+          kvName: "aro-e2e-global"
+          certName: "vpn-e2e-ca"
+          outputPath: ${{ variables.modulePath }}/secrets/vpn-ca
+      - template: ./templates/template-pull-certs-from-kv.yml
+        parameters:
+          kvName: "aro-e2e-global"
+          certName: "firstparty-e2e"
+          outputPath: ${{ variables.modulePath }}/secrets/firstparty-development
+      - template: ./templates/template-pull-certs-from-kv.yml
+        parameters:
+          kvName: "aro-e2e-global"
+          certName: "rp-e2e"
+          outputPath: ${{ variables.modulePath }}/secrets/localhost
+      - template: ./templates/template-pull-certs-from-kv.yml
+        parameters:
+          kvName: "aro-e2e-global"
+          certName: "vpn-e2e-client"
+          outputPath: ${{ variables.modulePath }}/secrets/vpn-client
+      - template: ./templates/template-prepare-secrets-env.yml
+        parameters:
+          adminObjectId: $(ARO_V4_E2E_SPN_OBJECT_ID)
+          parentDomainName: $(PARENT_DOMAIN_NAME)
+          parentDomainRg: $(PARENT_DOMAIN_RG)
+          pullSecret: $(aro-v4-e2e-pull-secret)
+          azureTenantId: $(AZURE_TENANT_ID)
+          azureSubscriptionId: $(AZURE_SUBSCRIPTION_ID)
+          azureArmClientSecret: $(aro-v4-e2e-arm-shared-secret)
+          azureArmClientId: $(aro-v4-e2e-arm-shared-id)
+          azureFpClientId: $(aro-v4-e2e-fp-shared-id)
+          azureClientSecret: $(aro-v4-e2e-rp-shared-secret)
+          azureClientId: $(aro-v4-e2e-rp-shared-id)
+          rgPrefix: $(RG_PREFIX)
+          proxyDomainNameLabel: $(PROXY_DOMAIN_NAME_LABEL)
+          workingDirectory: ${{ variables.modulePath }}
+          proxyIdRsaPub: $(aro-v4-e2e-proxy-ssh-publickey)
+          location: $(LOCATION)
+      - template: ./templates/template-deploy-rp-db.yml
+        parameters:
+          workingDirectory: ${{ variables.modulePath }}
+      - template: ./templates/template-run-rp.yml
+        parameters:
+          workingDirectory: ${{ variables.modulePath }}
+      - template: ./templates/template-clean-rp-db.yml
+        parameters:
+          workingDirectory: ${{ variables.modulePath }}

@@ -1,0 +1,84 @@
+parameters:
+  workingDirectory: ""
+steps:
+  - script: |
+      cd ${{ parameters.workingDirectory }}
+
+      . secrets/env
+      echo "########## Building ARO RP Binary ##########"
+      go build ./cmd/aro
+      echo "########## Starting ARO RP ##########"
+      ./aro rp &
+      while true; do
+        http_code=$(curl -k -s -o /dev/null -w '%{http_code}' https://localhost:8443/healthz/ready)
+        case $http_code in
+            "200")
+            break
+            ;;
+            *)
+            echo "local RP is NOT up $http_code, waiting"
+            sleep 2
+            ;;
+        esac
+      done
+
+      echo "########## Registering subscription ##########"
+      curl -k -X PUT \
+        -H 'Content-Type: application/json' \
+        -d '{"state": "Registered", "properties": {"tenantId": "'"$AZURE_TENANT_ID"'"}}' \
+        "https://localhost:8443/subscriptions/$AZURE_SUBSCRIPTION_ID?api-version=2.0"
+
+      echo "########## Create ARO RG ##########"
+      RESOURCEGROUP="v4-e2e-rg-$(git log --format=%h -n 1 HEAD)-$LOCATION"
+      CLUSTER=v4-e2e-$(git log --format=%h -n 1 HEAD)
+
+      az group create -g "$RESOURCEGROUP" -l $LOCATION
+
+      echo "########## Create ARO Vnet ##########"
+      az network vnet create \
+        -g "$RESOURCEGROUP" \
+        -n dev-vnet \
+        --address-prefixes 10.0.0.0/9
+
+      echo "########## Create ARO Subnet ##########"
+      for subnet in "$CLUSTER-master" "$CLUSTER-worker"; do
+        az network vnet subnet create \
+          -g "$RESOURCEGROUP" \
+          --vnet-name dev-vnet \
+          -n "$subnet" \
+          --address-prefixes 10.$((RANDOM & 127)).$((RANDOM & 255)).0/24 \
+          --service-endpoints Microsoft.ContainerRegistry
+      done
+
+      echo "########## Update ARO Subnet ##########"
+      az network vnet subnet update \
+        -g "$RESOURCEGROUP" \
+        --vnet-name dev-vnet \
+        -n "$CLUSTER-master" \
+        --disable-private-link-service-network-policies true
+
+      echo "########## Create ARO Cluster ##########"
+      az aro create \
+        -g "$RESOURCEGROUP" \
+        -n "$CLUSTER" \
+        --vnet dev-vnet \
+        --master-subnet "$CLUSTER-master" \
+        --worker-subnet "$CLUSTER-worker" \
+        --client-id $(cat aro-v4-e2e-devops-spn.json | jq -r '.clientId') \
+        --client-secret $(cat aro-v4-e2e-devops-spn.json | jq -r '.clientSecret')
+
+      echo "########## CLI : ARO List ##########"
+      az aro list -o table
+      echo "########## CLI : ARO list-creds ##########"
+      az aro list-credentials -g "$RESOURCEGROUP" -n "$CLUSTER"
+      echo "########## Run E2E ##########"
+      make e2e
+      echo "########## CLI : ARO delete cluster ##########"
+      az aro delete -g "$RESOURCEGROUP" -n "$CLUSTER" --yes
+      echo "########## CLI : Delete Subnet ##########"
+      for subnet in "$CLUSTER-master" "$CLUSTER-worker"; do
+        az network vnet subnet delete -g "$RESOURCEGROUP" --vnet-name dev-vnet -n "$subnet"
+      done
+      echo "########## CLI : Delete RG ##########"
+      az group delete -n $RESOURCEGROUP -y
+    displayName: "🚀 Run ARO RP & E2E"

@@ -1,0 +1,10 @@
+parameters:
+  kvName: ''
+  certName: ''
+  outputPath: ''
+steps:
+  - script: |
+      az keyvault certificate download --vault-name ${{ parameters.kvName }} -n ${{ parameters.certName }} -e DER -f ${{ parameters.outputPath }}.crt
+      az keyvault secret show --vault-name ${{ parameters.kvName }} -n ${{ parameters.certName }} --query value -o tsv > ${{ parameters.outputPath }}.pem
+      openssl rsa -in ${{ parameters.outputPath }}.pem -out ${{ parameters.outputPath }}.key -outform DER
+    displayName: "🔑 Downloading certificate ${{ parameters.certName }} and creating .cert .key"
