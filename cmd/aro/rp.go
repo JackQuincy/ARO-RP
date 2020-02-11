@@ -56,7 +56,6 @@ func rp(ctx context.Context, log *logrus.Entry) error {
 	if err != nil {
 		return err
 	}
-	defer m.Close()
 
 	b, err := backend.NewBackend(ctx, log.WithField("component", "backend"), env, db, m)
 	if err != nil {

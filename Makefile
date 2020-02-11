@@ -1,22 +1,6 @@
 SHELL = /bin/bash
 COMMIT = $(shell git rev-parse --short HEAD)$(shell [[ $$(git status --porcelain) = "" ]] || echo -dirty)
 
-ifeq ($(OS),Windows_NT)
-	BUILD_MODE ?= NT
-else
-	UNAME_S := $(shell uname -s)
-	ifeq ($(UNAME_S), Linux)
-		BUILD_MODE ?= LINUX
-		CMD_SHASUM ?= sha256sum --quiet
-		CMD_FIND ?= find
-	endif
-	ifeq ($(UNAME_S), Darwin)
-		BUILD_MODE ?= DARWIN
-		CMD_SHASUM ?= shasum -s
-		CMD_FIND ?= find .
-	endif
-endif
-
 aro: generate
 	go build -ldflags "-X main.gitCommit=$(COMMIT)" ./cmd/aro
 
@@ -83,7 +67,7 @@ proxy:
 	go build -ldflags "-X main.gitCommit=$(COMMIT)" ./hack/proxy
 
 pyenv${PYTHON_VERSION}:
-	virtualenv pyenv${PYTHON_VERSION}
+	virtualenv --python=/usr/bin/python${PYTHON_VERSION} pyenv${PYTHON_VERSION}
 	. pyenv${PYTHON_VERSION}/bin/activate && \
 		python --version && \
 		pip install azdev && \

@@ -79,7 +79,6 @@ If using the pre-GA Azure Red Hat OpenShift v4 service, ensure that the
 `Microsoft.RedHatOpenShift` resource provider is registered:
 
 ```
-az feature register --namespace Microsoft.RedHatOpenShift --name preview
 az provider register -n Microsoft.RedHatOpenShift --wait
 ```
 

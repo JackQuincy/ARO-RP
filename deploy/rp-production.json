@@ -360,9 +360,6 @@
             "name": "rp-pe-vnet-001",
             "type": "Microsoft.Network/virtualNetworks",
             "location": "[resourceGroup().location]",
-            "tags": {
-                "vnet": "rp"
-            },
             "apiVersion": "2019-07-01"
         },
         {
