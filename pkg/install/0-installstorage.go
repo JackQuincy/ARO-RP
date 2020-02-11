@@ -66,8 +66,6 @@ func (i *Installer) installStorage(ctx context.Context, installConfig *installco
 
 	resourceGroup := i.doc.OpenShiftCluster.Properties.ClusterProfile.ResourceGroupID[strings.LastIndexByte(i.doc.OpenShiftCluster.Properties.ClusterProfile.ResourceGroupID, '/')+1:]
 
-	resourceGroup := i.doc.OpenShiftCluster.Properties.ClusterProfile.ResourceGroupID[strings.LastIndexByte(i.doc.OpenShiftCluster.Properties.ClusterProfile.ResourceGroupID, '/')+1:]
-
 	i.log.Print("creating resource group")
 	group := mgmtresources.Group{
 		Location:  &installConfig.Config.Azure.Region,

@@ -11,7 +11,6 @@ from azext_aro._rbac import assign_contributor_to_vnet
 from azext_aro._validators import validate_subnets
 from azure.cli.core.commands.client_factory import get_subscription_id
 from azure.cli.core.util import sdk_no_wait
-from knack.util import CLIError
 
 
 FP_CLIENT_ID = 'f1dd0a37-89c6-4e07-bcd1-ffd3d43d8875'
