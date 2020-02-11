@@ -1,3 +1,4 @@
+SHELL = /bin/bash
 COMMIT = $(shell git rev-parse --short HEAD)$(shell [[ $$(git status --porcelain) = "" ]] || echo -dirty)
 
 ifeq ($(OS),Windows_NT)
@@ -56,7 +57,7 @@ client: generate
 		--input-file=/swagger/redhatopenshift/resource-manager/Microsoft.RedHatOpenShift/preview/2019-12-31-preview/redhatopenshift.json \
 		--output-folder=/python/client
 
-	sudo chown -R $(USER):$(USER) pkg/client python/client
+	sudo chown -R $$(id -un):$$(id -gn) pkg/client python/client
 	sed -i -e 's|azure/aro-rp|Azure/ARO-RP|g' pkg/client/services/preview/redhatopenshift/mgmt/2019-12-31-preview/redhatopenshift/models.go pkg/client/services/preview/redhatopenshift/mgmt/2019-12-31-preview/redhatopenshift/redhatopenshiftapi/interfaces.go
 	rm -rf python/client/azure/mgmt/redhatopenshift/v2019_12_31_preview/aio
 	>python/client/__init__.py
@@ -97,19 +98,23 @@ secrets:
 secrets-update:
 	oc create secret generic aro-v4-dev --from-file=secrets --dry-run -o yaml | oc apply -f -
 
+e2e:
+	go test ./test/e2e -timeout 60m -v -ginkgo.v -tags e2e
+
 test-go: generate
 	go build ./...
 
-	gofmt -s -w cmd hack pkg
-	go run ./vendor/golang.org/x/tools/cmd/goimports -w -local=github.com/Azure/ARO-RP cmd hack pkg
-	go run ./hack/validate-imports cmd hack pkg
+	gofmt -s -w cmd hack pkg test
+	go run ./vendor/golang.org/x/tools/cmd/goimports -w -local=github.com/Azure/ARO-RP cmd hack pkg test
+	go run ./hack/validate-imports cmd hack pkg test
 	go run ./hack/licenses
 	@[ -z "$$(ls pkg/util/*.go 2>/dev/null)" ] || (echo error: go files are not allowed in pkg/util, use a subpackage; exit 1)
-	@[ -z "$$($(CMD_FIND) -name "*:*")" ] || (echo error: filenames with colons are not allowed on Windows, please rename; exit 1)
-	@$(CMD_SHASUM) -c .sha256sum || (echo error: client library is stale, please run make client; exit 1)
+	@[ -z "$$(find -name "*:*")" ] || (echo error: filenames with colons are not allowed on Windows, please rename; exit 1)
+	@sha256sum --quiet -c .sha256sum || (echo error: client library is stale, please run make client; exit 1)
+	go test -tags e2e -run ^$$ ./test/e2e/...
 
 	go vet ./...
-	go test ./... -coverprofile cover.out | tee uts.txt
+	set -o pipefail && go test -v ./... -coverprofile cover.out | tee uts.txt
 
 test-python: generate pyenv${PYTHON_VERSION}
 	. pyenv${PYTHON_VERSION}/bin/activate && \

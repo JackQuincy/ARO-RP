@@ -27,7 +27,7 @@ import (
 )
 
 func (i *Installer) removeBootstrap(ctx context.Context) error {
-	g, err := i.getGraph(ctx)
+	g, err := i.loadGraph(ctx)
 	if err != nil {
 		return err
 	}
@@ -149,15 +149,27 @@ func (i *Installer) removeBootstrap(ctx context.Context) error {
 		doc.OpenShiftCluster.Properties.APIServerProfile.URL = "https://api." + installConfig.Config.ObjectMeta.Name + "." + installConfig.Config.BaseDomain + ":6443/"
 		doc.OpenShiftCluster.Properties.IngressProfiles[0].IP = routerIP
 		doc.OpenShiftCluster.Properties.ConsoleProfile.URL = "https://console-openshift-console.apps." + installConfig.Config.ObjectMeta.Name + "." + installConfig.Config.BaseDomain + "/"
-		doc.OpenShiftCluster.Properties.KubeadminPassword = kubeadminPassword.Password
+		doc.OpenShiftCluster.Properties.KubeadminPassword = api.SecureString(kubeadminPassword.Password)
 		return nil
 	})
 	return err
 }
 
 func (i *Installer) updateConsoleBranding(ctx context.Context, cli operatorclient.Interface) error {
+	i.log.Print("waiting for console-operator config")
+	timeoutCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+	err := wait.PollImmediateUntil(10*time.Second, func() (bool, error) {
+		_, err := cli.OperatorV1().Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+		return err == nil, nil
+
+	}, timeoutCtx.Done())
+	if err != nil {
+		return err
+	}
+
 	i.log.Print("updating console branding")
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		operatorConfig, err := cli.OperatorV1().Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -173,7 +185,7 @@ func (i *Installer) updateConsoleBranding(ctx context.Context, cli operatorclien
 	}
 
 	i.log.Print("waiting for console to reload")
-	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	timeoutCtx, cancel = context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	return wait.PollImmediateUntil(10*time.Second, func() (bool, error) {
 		operatorConfig, err := cli.OperatorV1().Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})

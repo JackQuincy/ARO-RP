@@ -2,7 +2,10 @@ required = [
   "github.com/alvaroloes/enumer",
   "github.com/jim-minter/go-cosmosdb/cmd/gencosmosdb",
   "github.com/golang/mock/mockgen",
-  "golang.org/x/tools/cmd/goimports"
+  "golang.org/x/tools/cmd/goimports",
+  "github.com/jstemmer/go-junit-report",
+  "github.com/axw/gocov/gocov",
+  "github.com/AlekSi/gocov-xml"
 ]
 
 [[constraint]]
@@ -58,6 +61,10 @@ required = [
   name = "github.com/ugorji/go"
   version = "1.1.7"
 
+[[constraint]]
+  name = "golang.org/x/crypto"
+  branch = "master"
+
 [[override]]
   name = "k8s.io/api"
   branch = "origin-4.3-kubernetes-1.16.2"
@@ -77,6 +84,10 @@ required = [
   name = "sigs.k8s.io/cluster-api-provider-azure"
   branch = "release-4.3"
   source = "https://github.com/openshift/cluster-api-provider-azure"
+
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"
 
 [prune]
   go-tests = true

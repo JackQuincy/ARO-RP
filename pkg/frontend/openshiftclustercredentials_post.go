@@ -22,6 +22,11 @@ func (f *frontend) postOpenShiftClusterCredentials(w http.ResponseWriter, r *htt
 	log := ctx.Value(middleware.ContextKeyLog).(*logrus.Entry)
 	vars := mux.Vars(r)
 
+	if f.apis[vars["api-version"]].OpenShiftClusterCredentialsConverter == nil {
+		api.WriteError(w, http.StatusNotFound, api.CloudErrorCodeInvalidResourceType, "", "The resource type '%s' could not be found in the namespace '%s' for api version '%s'.", vars["resourceType"], vars["resourceProviderNamespace"], vars["api-version"])
+		return
+	}
+
 	body := r.Context().Value(middleware.ContextKeyBody).([]byte)
 	if len(body) > 0 && !json.Valid(body) {
 		api.WriteError(w, http.StatusBadRequest, api.CloudErrorCodeInvalidRequestContent, "", "The request content was invalid and could not be deserialized.")
@@ -51,7 +56,10 @@ func (f *frontend) _postOpenShiftClusterCredentials(ctx context.Context, r *http
 		return nil, err
 	}
 
-	if doc.OpenShiftCluster.Properties.ProvisioningState == api.ProvisioningStateCreating {
+	if doc.OpenShiftCluster.Properties.ProvisioningState == api.ProvisioningStateCreating ||
+		doc.OpenShiftCluster.Properties.ProvisioningState == api.ProvisioningStateDeleting ||
+		doc.OpenShiftCluster.Properties.ProvisioningState == api.ProvisioningStateFailed && doc.OpenShiftCluster.Properties.FailedProvisioningState == api.ProvisioningStateCreating ||
+		doc.OpenShiftCluster.Properties.ProvisioningState == api.ProvisioningStateFailed && doc.OpenShiftCluster.Properties.FailedProvisioningState == api.ProvisioningStateDeleting {
 		return nil, api.NewCloudError(http.StatusBadRequest, api.CloudErrorCodeRequestNotAllowed, "", "Request is not allowed in provisioningState '%s'.", doc.OpenShiftCluster.Properties.ProvisioningState)
 	}
 

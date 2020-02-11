@@ -10,11 +10,14 @@ against a development RP running at https://localhost:8443/.
 
 1. Install a supported version of [Python](https://www.python.org/downloads), if
    you don't have one installed already.  The `az` client supports Python 2.7
-   and Python 3.5+.  A recent Python 3.x version is recommended.
+   and Python 3.5+.  A recent Python 3.x version is recommended.  You will also
+   need setuptools installed, if you don't have it installed already.
 
 1. Install the
    [`az`](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) client,
-   if you haven't already.
+   if you haven't already.  You will need `az` version 2.0.72 or greater, as
+   this version includes the `az network vnet subnet update
+   --disable-private-link-service-network-policies` flag.
 
 1. Log in to Azure:
 
@@ -35,6 +38,17 @@ against a development RP running at https://localhost:8443/.
 1. Build the development `az aro` extension:
 
    `make az`
+
+   Note: you may see a message like the following; if so you can safely ignore
+   it:
+
+   ```
+   byte-compiling build/bdist.linux-x86_64/egg/azext_aro/vendored_sdks/azure/mgmt/redhatopenshift/v2019_12_31_preview/models/_models_py3.py to _models_py3.pyc
+     File "build/bdist.linux-x86_64/egg/azext_aro/vendored_sdks/azure/mgmt/redhatopenshift/v2019_12_31_preview/models/_models_py3.py", line 45
+       def __init__(self, *, visibility=None, url: str=None, ip: str=None, **kwargs) -> None:
+                        ^
+    SyntaxError: invalid syntax
+    ```
 
 1. Add the ARO extension path to your `az` configuration:
 
@@ -62,7 +76,6 @@ against a development RP running at https://localhost:8443/.
 ## Registering the resource provider
 
 If using the pre-GA Azure Red Hat OpenShift v4 service, ensure that the
-`Microsoft.RedHatOpenShift/preview` feature is registered and that the
 `Microsoft.RedHatOpenShift` resource provider is registered:
 
 ```

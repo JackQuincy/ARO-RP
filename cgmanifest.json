@@ -13,6 +13,15 @@
             "component": {
                 "type": "git",
                 "git": {
+                    "commitHash": "3a14fb1c4737b3995174c5f4d6d08a348b9b4180",
+                    "repositoryUrl": "https://github.com/AlekSi/gocov-xml/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
                     "commitHash": "0820c0553d6c410603056869f7b0e52d61ce5bee",
                     "repositoryUrl": "https://github.com/Azure/azure-sdk-for-go/"
                 }
@@ -105,6 +114,15 @@
                 "git": {
                     "commitHash": "cd610ee76770524d9f1135bfdc241e1b60dfd00b",
                     "repositoryUrl": "https://github.com/aws/aws-sdk-go/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
+                    "commitHash": "b6eca663ebb7e7ef9798914d19f53ba2c6f74c96",
+                    "repositoryUrl": "https://github.com/axw/gocov/"
                 }
             }
         },
@@ -409,6 +427,15 @@
             "component": {
                 "type": "git",
                 "git": {
+                    "commitHash": "a30252cb686a21eb2d0b98132633053ec2f7f1e5",
+                    "repositoryUrl": "https://github.com/hpcloud/tail/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
                     "commitHash": "1afb36080aec31e0d1528973ebe6721b191b0369",
                     "repositoryUrl": "https://github.com/imdario/mergo/"
                 }
@@ -438,6 +465,15 @@
                 "git": {
                     "commitHash": "acfec88f7a0d5140ace3dcdbee10184e3684a9e1",
                     "repositoryUrl": "https://github.com/json-iterator/go/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
+                    "commitHash": "cc1f095d5cc5eca2844f5c5ea7bb37f6b9bf6cac",
+                    "repositoryUrl": "https://github.com/jstemmer/go-junit-report/"
                 }
             }
         },
@@ -591,6 +627,24 @@
                 "git": {
                     "commitHash": "ce00817b8a3f5f0c7dfc5a50be6499b6b8c8c8b4",
                     "repositoryUrl": "https://github.com/mtrmac/gpgme/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
+                    "commitHash": "ce5d301e555bb672c693c099ba6ca5087b06c0b4",
+                    "repositoryUrl": "https://github.com/onsi/ginkgo/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
+                    "commitHash": "f9a52764bd5a0fd2d201bcca584351d03b72f8da",
+                    "repositoryUrl": "https://github.com/onsi/gomega/"
                 }
             }
         },
@@ -994,6 +1048,15 @@
             "component": {
                 "type": "git",
                 "git": {
+                    "commitHash": "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9",
+                    "repositoryUrl": "https://gopkg.in/fsnotify.v1/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
                     "commitHash": "d2d2541c53f18d2a059457998ce2876cc8e67cbf",
                     "repositoryUrl": "https://gopkg.in/inf.v0/"
                 }
@@ -1005,6 +1068,15 @@
                 "git": {
                     "commitHash": "94291fffe2b14f4632ec0e67c1bfecfc1287a168",
                     "repositoryUrl": "https://gopkg.in/ini.v1/"
+                }
+            }
+        },
+        {
+            "component": {
+                "type": "git",
+                "git": {
+                    "commitHash": "dd632973f1e7218eb1089048e0798ec9ae7dceb8",
+                    "repositoryUrl": "https://gopkg.in/tomb.v1/"
                 }
             }
         },

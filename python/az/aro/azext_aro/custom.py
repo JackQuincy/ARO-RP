@@ -133,18 +133,8 @@ def aro_list_credentials(client, resource_group_name, resource_name):
     return client.list_credentials(resource_group_name, resource_name)
 
 
-def aro_update(client, resource_group_name, resource_name, worker_count=None,
-               no_wait=False):
-    current = client.get(resource_group_name, resource_name)
-
-    if len(current.worker_profiles) != 1:
-        raise CLIError("Cannot update cluster with %d worker profiles." %
-                       len(current.worker_profiles))
-
-    current.worker_profiles[0].count = worker_count
-    oc = v2019_12_31_preview.OpenShiftCluster(
-        worker_profiles=current.worker_profiles,
-    )
+def aro_update(client, resource_group_name, resource_name, no_wait=False):
+    oc = v2019_12_31_preview.OpenShiftCluster()
 
     return sdk_no_wait(no_wait, client.update,
                        resource_group_name=resource_group_name,
